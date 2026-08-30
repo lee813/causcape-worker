@@ -4,6 +4,14 @@ boto3>=1.34.0
 requests>=2.31.0
 huggingface_hub>=0.23.0
 
+# Logging & Config
+loguru>=0.7.0
+einops>=0.7.0
+omegaconf>=2.3.0
+tqdm>=4.66.0
+sentencepiece>=0.2.0
+scipy>=1.11.0
+
 # Image & Video Processing
 pillow>=10.0.0
 soundfile>=0.12.1
