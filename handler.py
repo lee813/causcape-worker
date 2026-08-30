@@ -6,44 +6,52 @@ from pathlib import Path
 sys.path.insert(0, "/app/LongCat-Video")
 
 import runpod
-from longcat_worker import AvatarWorker
 
 CACHE_ROOT = Path("/runpod-volume/huggingface-cache/hub")
-MODEL_ID = os.getenv("CACHED_MODEL_ID", "frank/longcat-avatar-runpod")
 
-def resolve_cached_model(model_id: str) -> Path:
-    """Resolve RunPod Cached Model snapshot directory dynamically."""
-    if "/" in model_id:
-        org, name = model_id.split("/", 1)
-        model_dir = CACHE_ROOT / f"models--{org}--{name}"
-    else:
-        model_dir = CACHE_ROOT / f"models--{model_id}"
-        
-    ref_file = model_dir / "refs" / "main"
-    if ref_file.exists():
-        revision = ref_file.read_text().strip()
-        snapshot_dir = model_dir / "snapshots" / revision
-        if snapshot_dir.exists():
-            return snapshot_dir
+def resolve_model_directories() -> tuple[Path, Path]:
+    """Dynamically resolve Base Model and Avatar Model directories from RunPod Cached Model."""
+    print(f"[*] Scanning cache directory: {CACHE_ROOT}")
+    
+    # 1. Search for any cached models in RunPod cache volume
+    if CACHE_ROOT.exists():
+        for model_dir in CACHE_ROOT.glob("models--*"):
+            print(f"  [+] Found cached repo: {model_dir.name}")
+            snapshots = list((model_dir / "snapshots").glob("*"))
+            if snapshots:
+                snap_dir = snapshots[0]
+                print(f"  [+] Active snapshot directory: {snap_dir}")
+                
+                # Check merged structure
+                if (snap_dir / "LongCat-Video").exists() and (snap_dir / "LongCat-Video-Avatar-1.5").exists():
+                    return snap_dir / "LongCat-Video", snap_dir / "LongCat-Video-Avatar-1.5"
+                
+                # Check standalone Avatar 1.5 structure
+                if (snap_dir / "base_model_int8").exists() or (snap_dir / "lora").exists():
+                    # Check if base model is sibling or inside
+                    return snap_dir, snap_dir
+                    
+                return snap_dir, snap_dir
 
-    snapshots = list((model_dir / "snapshots").glob("*"))
-    if snapshots:
-        return snapshots[0]
+    # 2. Check local fallback
+    fallback = Path("/workspace/LongCat-Video/weights")
+    if fallback.exists():
+        print(f"[*] Using local fallback directory: {fallback}")
+        base = fallback / "LongCat-Video" if (fallback / "LongCat-Video").exists() else fallback
+        avatar = fallback / "LongCat-Video-Avatar-1.5" if (fallback / "LongCat-Video-Avatar-1.5").exists() else fallback
+        return base, avatar
 
-    # Fallback to local weights directory for local development or testing
-    local_fallback = Path("/workspace/LongCat-Video/weights")
-    if local_fallback.exists():
-        return local_fallback
+    # 3. Default to huggingface model hub downloads if cache not present
+    print("[!] Cached volume not mounted, falling back to Hugging Face Hub IDs")
+    return Path("meituan-longcat/LongCat-Video"), Path("meituan-longcat/LongCat-Video-Avatar-1.5")
 
-    raise FileNotFoundError(f"Cached model not found in {model_dir} and local fallback not present")
+BASE_MODEL_DIR, AVATAR_MODEL_DIR = resolve_model_directories()
+print(f"[*] Base Model Path: {BASE_MODEL_DIR}")
+print(f"[*] Avatar Model Path: {AVATAR_MODEL_DIR}")
 
-# Resolve model paths
-MODEL_ROOT = resolve_cached_model(MODEL_ID)
-BASE_MODEL_DIR = MODEL_ROOT / "LongCat-Video"
-AVATAR_MODEL_DIR = MODEL_ROOT / "LongCat-Video-Avatar-1.5"
-
-# Global Singleton initialization on Worker Cold Start (Executes once per worker)
-print(f"=== INITIALIZING LONGCAT WORKER (Model Root: {MODEL_ROOT}) ===")
+# Global Singleton initialization on Worker Cold Start
+print("=== INITIALIZING LONGCAT WORKER ===")
+from longcat_worker import AvatarWorker
 worker = AvatarWorker(base_model_dir=str(BASE_MODEL_DIR), avatar_model_dir=str(AVATAR_MODEL_DIR))
 print("=== LONGCAT WORKER READY ===")
 
