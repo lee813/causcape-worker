@@ -1,0 +1,27 @@
+# RunPod Serverless & AWS/Cloudflare Storage
+runpod>=1.7.5
+boto3>=1.34.0
+requests>=2.31.0
+huggingface_hub>=0.23.0
+
+# Image & Video Processing
+pillow>=10.0.0
+soundfile>=0.12.1
+imageio>=2.34.0
+imageio-ffmpeg>=0.5.0
+pyloudnorm>=0.1.1
+librosa>=0.10.2
+audio-separator>=0.20.0
+onnxruntime>=1.18.0
+
+# Deep Learning Framework
+torch==2.6.0
+torchvision
+torchaudio
+transformers==4.41.0
+diffusers==0.35.1
+accelerate==1.14.0
+safetensors>=0.4.3
+
+# Prebuilt FlashAttention-2 Wheel for PyTorch 2.6.0 + CUDA 12.4
+https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu12torch2.6cxx11abiFALSE-cp310-cp310-linux_x86_64.whl
